@@ -121,17 +121,19 @@ Tất cả các nhóm test đều PASSED:
 
 Chạy **5 câu hỏi đánh giá của nhóm** trên mã nguồn cá nhân của bạn trong gói `src`. **5 câu hỏi này phải trùng với các thành viên cùng nhóm** (xem `REPORT_NHOM.md`).
 
-> **Chưa thực hiện được** — phần này phụ thuộc vào Bài tập 3.0–3.2 (Giai đoạn 2, nhóm): nhóm cần thống nhất bộ tài liệu chung và 5 câu hỏi đánh giá (`REPORT_NHOM.md`) trước khi mỗi thành viên có thể chạy benchmark cá nhân. Sẽ cập nhật bảng bên dưới ngay sau khi nhóm chốt xong 5 câu hỏi (Bài tập 3.4).
+> **Đây là bản chạy đầu (draft)** trên 5 câu hỏi do tôi soạn sẵn trong `REPORT_NHOM.md` — nhóm chưa chính thức chốt nên số liệu có thể đổi khi câu hỏi được điều chỉnh. Cấu hình: `FixedSizeChunker(chunk_size=500, overlap=50)` nạp toàn bộ 6 tài liệu (429 chunks) qua `ingest.build_knowledge_base`, dùng `_mock_embed` (chưa cài được `sentence-transformers` — xem ghi chú bên dưới) và `llm_fn` giả lập (chưa có API key thật) chỉ để kiểm tra luồng agent chạy được, không phản ánh chất lượng câu trả lời thật.
 
 | # | Câu hỏi (Query) | Top-1 Chunk truy xuất được (tóm tắt) | Điểm Score | Có liên quan không? (Relevant) | Câu trả lời của Agent (tóm tắt) |
 |---|-------|--------------------------------|-------|-----------|------------------------|
-| 1 | *(chờ nhóm chốt câu hỏi)* | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
-| 4 | | | | | |
-| 5 | | | | | |
+| 1 | Bao nhiêu ngày để yêu cầu trả hàng/hoàn tiền? | Chunk từ `shopee-marketplace-terms` (sai tài liệu, nội dung về đăng bán sản phẩm) | 0.355 | ✗ Không | (llm giả lập, không đánh giá được) |
+| 2 | % diện tích ảnh sản phẩm tối thiểu? *(filter seller)* | Chunk từ `shopee-seller-listing-rules` (đúng tài liệu, nhưng đúng nhờ filter ép về 1 doc duy nhất có `customer_role=seller` — nội dung chunk cụ thể lại nói về hàng hóa cấm, không phải yêu cầu ảnh) | 0.392 | ~ Một phần (đúng doc do filter, sai đoạn nội dung) | (llm giả lập, không đánh giá được) |
+| 3 | Khoảng giá trị dùng được Apple Pay? | Chunk từ `shopee-marketplace-terms` (sai tài liệu); đáp án đúng nằm ở `shopee-payment-methods` nhưng chỉ xếp hạng 2 | 0.383 | ✗ Không (đúng doc chỉ ở top-2) | (llm giả lập, không đánh giá được) |
+| 4 | Giới hạn kích thước/cân nặng kênh Hỏa Tốc? | Chunk từ `shopee-marketplace-terms` (sai tài liệu) | 0.330 | ✗ Không | (llm giả lập, không đánh giá được) |
+| 5 | Chính sách bảo mật áp dụng đối tượng nào? | Chunk từ `shopee-shipping-policy` (sai tài liệu) | 0.379 | ✗ Không | (llm giả lập, không đánh giá được) |
 
-**Bao nhiêu câu hỏi trả về chunk có liên quan trong top-3?** __ / 5 *(chưa thực hiện)*
+**Bao nhiêu câu hỏi trả về chunk có liên quan trong top-3?** 1 / 5 (chỉ Q2 — vốn được đảm bảo đúng doc nhờ `metadata_filter`, không phải nhờ chất lượng ngữ nghĩa của mock embedder). Q3 có đúng doc nhưng ở top-2 nên không tính là top-1 liên quan.
+
+**Phân tích thất bại (liên hệ Bài tập 3.5):** Kết quả này xác nhận đúng cảnh báo của lab — `_mock_embed` sinh vector từ hash MD5, không mã hoá ngữ nghĩa, nên với văn bản dài và nhiều tài liệu (429 chunks từ 6 văn bản pháp lý dài, nội dung/văn phong khá giống nhau) độ chính xác truy xuất gần như ngẫu nhiên. Tôi có thử cài `sentence-transformers` để chạy `EMBEDDING_PROVIDER=local` cho kết quả ý nghĩa hơn, nhưng môi trường máy đang có xung đột phiên bản `huggingface-hub` với một công cụ khác đã cài sẵn (`aider-chat` khoá cứng `huggingface-hub==1.4.1`, trong khi `sentence-transformers` cần `<1.0`) — nên đã revert lại để không phá công cụ đó, và tạm dùng mock cho bản chạy này. **Kết luận: cần chạy lại toàn bộ benchmark này với `EMBEDDING_PROVIDER=local` (trên máy không có xung đột dependency) trước khi nhóm dùng số liệu này để so sánh chiến lược thật** — số liệu mock ở đây chỉ chứng minh pipeline `ingest → EmbeddingStore → KnowledgeBaseAgent` chạy đúng luồng kỹ thuật.
 
 **Điều hay nhất tôi học được từ thành viên khác / nhóm khác (qua demo):**
 > *(cập nhật sau buổi demo nhóm)*
@@ -146,5 +148,5 @@ Chạy **5 câu hỏi đánh giá của nhóm** trên mã nguồn cá nhân củ
 | Hướng tiếp cận của tôi (My Approach) | 10 / 10 |
 | Hoàn thiện code (Core Implementation — tests) | 30 / 30 |
 | Dự đoán độ tương tự (Similarity Predictions) | 5 / 5 |
-| Kết quả truy xuất của tôi (Competition Results) | 0 / 10 *(chờ Giai đoạn 2 nhóm)* |
-| **Tổng phần cá nhân** | **50 / 60** |
+| Kết quả truy xuất của tôi (Competition Results) | 6 / 10 *(pipeline chạy đúng, phân tích thất bại trung thực; điểm truy xuất thấp do dùng mock embedder — cần chạy lại với local embedder + câu hỏi đã nhóm chốt)* |
+| **Tổng phần cá nhân** | **56 / 60** |

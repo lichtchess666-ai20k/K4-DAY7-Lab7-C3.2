@@ -17,28 +17,34 @@
 **Chủ đề (cố định theo lớp K4):** Chính sách thương mại điện tử / hỗ trợ khách hàng (thanh toán, đổi trả, giao hàng, quyền riêng tư, điều kiện người bán…).
 
 **Phạm vi cụ thể nhóm tập trung:**
-> *1 câu — ví dụ: đổi trả + điều kiện người bán.*
+> Chính sách vận hành sàn TMĐT Shopee dành cho người mua và người bán: đổi trả/hoàn tiền, vận chuyển, thanh toán, điều kiện đăng bán sản phẩm, và bảo mật/quyền riêng tư — 6 tài liệu chính thức từ `help.shopee.vn`.
 
 ### Danh sách tài liệu (Data Inventory)
 
 | # | Tên tài liệu | Nguồn (Source URL) | Ngày lấy / Phiên bản | Số ký tự | Metadata đã gán |
 |---|--------------|------------|--------------------|----------|-----------------|
-| 1 | | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
-| 4 | | | | | |
-| 5 | | | | | |
+| 1 | Chính sách trả hàng và hoàn tiền | [help.shopee.vn/.../77251](https://help.shopee.vn/portal/4/article/77251) | 2026-08-03 / not-stated (nội dung nêu hiệu lực 11/3/2026) | 19.410 | `customer_role: buyer`, `category: returns`, `language: vi` |
+| 2 | Chính sách vận chuyển Shopee | [help.shopee.vn/.../77250](https://help.shopee.vn/portal/4/article/77250-CH%C3%8DNH-S%C3%81CH-V%E1%BA%ACN-CHUY%E1%BB%82N-SHOPEE) | 2026-08-03 / not-stated (nội dung nêu đăng tải 20/3/2026) | 24.370 | `customer_role: both`, `category: shipping`, `language: vi` |
+| 3 | Phương thức thanh toán trên Shopee | [help.shopee.vn/.../79198](https://help.shopee.vn/portal/4/article/79198-%5BTh%C3%A0nh-vi%C3%AAn-m%E1%BB%9Bi%5D-Shopee-hi%E1%BB%87n-%C4%91ang-c%C3%B3-nh%E1%BB%AFng-ph%C6%B0%C6%A1ng-th%E1%BB%A9c-thanh-to%C3%A1n-n%C3%A0o) | 2026-08-03 / not-stated | 5.817 | `customer_role: buyer`, `category: payment`, `language: vi` |
+| 4 | Quy định về đăng bán sản phẩm trên Shopee | [help.shopee.vn/.../77246](https://help.shopee.vn/portal/4/article/77246-QUY-%C4%90%E1%BB%8ANH-V%E1%BB%80-%C4%90%C4%82NG-B%C3%81N-S%E1%BA%A2N-PH%E1%BA%A8M-TR%C3%8AN-SHOPEE) | 2026-08-03 / not-stated (nội dung nêu công bố 14/8/2024) | 21.315 | `customer_role: seller`, `category: seller-terms`, `language: vi` |
+| 5 | Chính sách bảo mật | [help.shopee.vn/.../77244](https://help.shopee.vn/portal/4/article/77244-CH%C3%8DNH-S%C3%81CH-B%E1%BA%A2O-M%E1%BA%ACT) | 2026-08-03 / not-stated (nội dung nêu cập nhật 04/6/2026) | 42.934 | `customer_role: both`, `category: privacy`, `language: vi` |
+| 6 | Quy chế hoạt động sàn TMĐT Shopee.vn | [help.shopee.vn/.../77245](https://help.shopee.vn/portal/4/article/77245) | 2026-08-03 / not-stated (nội dung nêu cập nhật 03/01/2025) | 77.625 | `customer_role: both`, `category: general-terms`, `language: vi` |
+
+> `document_version` ghi `not-stated` vì trang Trung tâm trợ giúp Shopee không có số phiên bản riêng biệt — mỗi tài liệu tự nêu ngày cập nhật/hiệu lực trong nội dung (đã ghi chú ở cột trên) để phục vụ truy vết.
 
 **Danh sách kiểm tra quản trị dữ liệu (Data governance checklist):**
-- [ ] Tập tài liệu (Corpus) chỉ chứa nguồn công khai/được phép dùng và không chứa dữ liệu cá nhân, thông tin đăng nhập hoặc tài liệu nội bộ.
-- [ ] Mỗi tài liệu có `source_url`, `retrieved_at`, `document_version` (hoặc ngày hiệu lực) trong metadata.
+- [x] Tập tài liệu (Corpus) chỉ chứa nguồn công khai/được phép dùng và không chứa dữ liệu cá nhân, thông tin đăng nhập hoặc tài liệu nội bộ. (Lấy từ Trung tâm trợ giúp công khai của Shopee qua `scripts/fetch_public_pages.py`, có kiểm tra `robots.txt`.)
+- [x] Mỗi tài liệu có `source_url`, `retrieved_at`, `document_version` (hoặc ngày hiệu lực) trong metadata.
 
 ### Cấu trúc Metadata (Metadata Schema)
 
 | Trường metadata | Kiểu | Ví dụ giá trị | Tại sao hữu ích cho truy xuất (retrieval)? |
 |----------------|------|---------------|-------------------------------|
-| | | | |
-| | | | |
+| `customer_role` | enum (`buyer`/`seller`/`both`) | `seller` | Bắt buộc theo K4 — cho phép `search_with_filter()` thu hẹp kết quả về đúng đối tượng hỏi (vd. câu hỏi của người bán không nên trả về chính sách chỉ dành cho người mua). |
+| `category` | string | `returns`, `shipping`, `payment`, `seller-terms`, `privacy`, `general-terms` | Lọc theo chủ đề cụ thể khi câu hỏi rõ ràng thuộc 1 mảng chính sách, giảm nhiễu từ các tài liệu dài không liên quan. |
+| `language` | enum (`vi`) | `vi` | Dự phòng cho corpus đa ngôn ngữ trong tương lai; hiện tại toàn bộ corpus tiếng Việt nên chưa dùng để lọc. |
+| `source_url` + `retrieved_at` | string / date | `https://help.shopee.vn/...`, `2026-08-03` | Truy vết nguồn gốc câu trả lời (grounding) — bắt buộc theo `K4_VARIANT.md`, không dùng để lọc nhưng hiển thị kèm câu trả lời để kiểm chứng. |
+| `doc_id` | string | `shopee-seller-listing-rules` | Gắn lên từng chunk khi ingest để `delete_document()` và truy vết "chunk này thuộc tài liệu nào" hoạt động đúng. |
 
 ---
 
@@ -48,13 +54,21 @@
 
 ### Phân tích đường cơ sở (Baseline Analysis)
 
-Chạy `ChunkingStrategyComparator().compare()` trên 2-3 tài liệu:
+Chạy `ChunkingStrategyComparator().compare(body, chunk_size=500)` trên 3 tài liệu (dùng `_mock_embed`, chỉ để so sánh cấu trúc chunk — không dùng để kết luận chất lượng ngữ nghĩa):
 
 | Tài liệu | Chiến lược (Strategy) | Số lượng Chunk | Độ dài trung bình | Giữ được ngữ cảnh không? |
 |-----------|----------|-------------|------------|-------------------|
-| | FixedSizeChunker (`fixed_size`) | | | |
-| | SentenceChunker (`by_sentences`) | | | |
-| | RecursiveChunker (`recursive`) | | | |
+| shopee-returns-refund (19.410 ký tự) | FixedSizeChunker (`fixed_size`) | 39 | 497,7 | Không — cắt cứng theo ký tự, thường vỡ giữa từ/câu (vd. chunk[1] bắt đầu bằng `"ùng để chỉ..."`, bị cắt ngay giữa từ "dùng"). |
+| shopee-returns-refund | SentenceChunker (`by_sentences`) | 47 | 410,1 | Có — luôn bắt đầu/kết thúc ở ranh giới câu, dễ đọc độc lập. |
+| shopee-returns-refund | RecursiveChunker (`recursive`) | 60 | 321,6 | Có — ưu tiên cắt tại `\n\n`/`. `, không vỡ từ; chunk nhỏ hơn 2 chiến lược kia do văn bản có nhiều đoạn ngắn. |
+| shopee-payment-methods (5.817 ký tự) | FixedSizeChunker | 12 | 484,8 | Không — tương tự trên, cắt giữa cụm từ ("ShopeePay và tiến hành..." bị cắt mất phần đầu). |
+| shopee-payment-methods | SentenceChunker | 8 | 725,8 | Trung bình — bắt đầu ở ranh giới câu nhưng đôi khi gộp cả tiêu đề mục ("Thẻ Tín dụng/Ghi nợ") lẫn đoạn nội dung theo sau vào cùng 1 chunk, làm avg_length dao động mạnh. |
+| shopee-payment-methods | RecursiveChunker | 16 | 361,7 | Có — kích thước ổn định hơn `by_sentences` trên cùng tài liệu, vẫn giữ câu trọn vẹn. |
+| shopee-seller-listing-rules (21.315 ký tự) | FixedSizeChunker | 43 | 495,7 | Không — cắt giữa từ (vd. "ng bán sản phẩm..." bị mất "đă" của từ "đăng"). |
+| shopee-seller-listing-rules | SentenceChunker | 78 | 270,5 | Trung bình — số chunk tăng mạnh (78) vì văn bản có nhiều câu ngắn dạng liệt kê (a, b, c…); một số chunk trộn lẫn tiêu đề mục La Mã/chữ cái với câu nội dung. |
+| shopee-seller-listing-rules | RecursiveChunker | 52 | 408,0 | Có — cân bằng tốt nhất giữa việc giữ câu trọn vẹn và kích thước ổn định gần với `chunk_size=500` mục tiêu. |
+
+**Nhận xét baseline:** `FixedSizeChunker` cho kích thước đồng đều nhất nhưng **luôn vỡ từ/câu** ở ranh giới chunk — rủi ro cao với văn bản chính sách nhiều điều khoản như corpus này, vì một điều kiện quan trọng (vd. ngưỡng %, số ngày) có thể bị cắt làm đôi. `SentenceChunker` giữ ngữ nghĩa câu tốt nhưng kích thước dao động mạnh theo độ dài câu gốc (270–726 ký tự tùy tài liệu) và không phân biệt được tiêu đề mục với nội dung. `RecursiveChunker` cân bằng tốt nhất trong 3 chiến lược có sẵn: vừa không vỡ từ, vừa bám sát `chunk_size` mục tiêu hơn — là lựa chọn khởi điểm hợp lý cho corpus chính sách nhiều điều/khoản này, dù còn thua chiến lược tách theo điều/khoản (heading-based) mà `K4_VARIANT.md` khuyến nghị.
 
 ### Chiến lược của từng thành viên
 
@@ -115,17 +129,19 @@ Chạy `ChunkingStrategyComparator().compare()` trên 2-3 tài liệu:
 ### Tổng hợp chất lượng truy xuất của nhóm
 
 > Cách chấm (theo `docs/SCORING.md`): **2 điểm/câu** — top-3 chứa chunk liên quan + agent trả lời đúng (2), có liên quan nhưng thiếu/không ở top-1 (1), không có trong top-3 (0).
+>
+> **Mới có kết quả của Lương Đức Thắng** (`FixedSizeChunker(500,50)`, `_mock_embed`) — bảng dưới sẽ cập nhật thêm cột/kết quả khi các thành viên khác chạy xong chiến lược riêng. Xem chi tiết từng câu tại `REPORT_CANHAN_LuongDucThang.md` — Phần 5.
 
 | # | Câu hỏi | Chiến lược tốt nhất cho câu này | Có chunk liên quan trong top-3? | Ghi chú |
 |---|---------|-------------------------------|-------------------------------|---------|
-| 1 | | | | |
-| 2 | | | | |
-| 3 | | | | |
-| 4 | | | | |
-| 5 | | | | |
+| 1 | Thời hạn trả hàng/hoàn tiền | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Không | Mock embedder trả về sai tài liệu (`shopee-marketplace-terms`) ở cả top-3. |
+| 2 | % diện tích ảnh sản phẩm (seller) | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Có (đúng doc ở top-1) | Đúng tài liệu là nhờ `metadata_filter={"customer_role":"seller"}` ép về đúng 1 doc — không phải do embedding tốt; chunk cụ thể vẫn không chứa câu trả lời thật. |
+| 3 | Khoảng giá trị Apple Pay | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Có, nhưng ở top-2 (không phải top-1) | |
+| 4 | Giới hạn kích thước/cân nặng Hỏa Tốc | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Không | |
+| 5 | Phạm vi áp dụng chính sách bảo mật | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Không | |
 
 **Lọc bằng metadata có giúp ích không? Ở câu hỏi nào?**
-> *Viết 2-3 câu:*
+> Có — rõ nhất ở Q2: `search_with_filter(metadata_filter={"customer_role": "seller"})` đảm bảo kết quả chỉ đến từ `shopee-seller-listing-rules` (tài liệu duy nhất có `customer_role=seller`), loại trừ hoàn toàn nhiễu từ 5 tài liệu còn lại — đây là câu duy nhất "trúng đúng tài liệu" trong lần chạy mock của Thắng, và trúng nhờ metadata chứ không nhờ embedding. Điều này cho thấy giá trị của metadata filtering **độc lập** với chất lượng embedding: ngay cả khi embedding kém (như mock), filter theo `customer_role` vẫn thu hẹp không gian tìm kiếm hiệu quả. Cần đồng đội chạy thêm với embedder thật để so sánh mức độ cải thiện khi có + không có filter trên cùng 1 embedder tốt.
 
 ---
 
