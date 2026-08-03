@@ -115,25 +115,39 @@ Tất cả các nhóm test đều PASSED:
 **Kết quả nào bất ngờ nhất? Điều này nói gì về cách embeddings biểu diễn ý nghĩa?**
 > Bất ngờ nhất là cặp 3: hai câu hoàn toàn không liên quan về chủ đề ("lập trình Python" vs "trời mưa ở Hà Nội") lại có điểm cao nhất (0.1338) trong khi cặp 1 — gần như là một câu paraphrase của câu kia ("con mèo ngủ trên ghế") — lại chỉ đạt 0.0167, gần như không tương quan. Điều này minh chứng rõ cảnh báo trong README: `MockEmbedder` sinh vector từ **hash MD5 của chuỗi ký tự** (`hashlib.md5(text.encode())`) làm seed cho một bộ sinh số giả-ngẫu nhiên (LCG), hoàn toàn không mã hoá ngữ nghĩa — nó chỉ đảm bảo tính xác định (cùng input → cùng output) chứ không phản ánh việc hai câu có ý nghĩa gần nhau hay không. Bài học: **cosine similarity chỉ có ý nghĩa khi embedding model thực sự học được biểu diễn ngữ nghĩa** (như `sentence-transformers` hay OpenAI embeddings); mock embedder chỉ nên dùng để kiểm thử logic (đúng shape, đúng công thức toán), tuyệt đối không dùng để so sánh/kết luận chất lượng chunking hay retrieval tiếng Việt — đúng như lưu ý trong `README.md` và `exercises.md`.
 
+### Cập nhật: chạy lại với embedder thật (`FPTEmbedder`, model `Vietnamese_Embedding` qua FPT AI Marketplace)
+
+> Sau khi cài được embedder thật (xem `src/LuongDucThang/embeddings.py` — class `FPTEmbedder`, dùng API OpenAI-compatible của FPT AI Marketplace, `base_url=https://mkp-api.fptcloud.com`), tôi chạy lại đúng 5 cặp câu trên để đối chiếu.
+
+| Cặp | Dự đoán (từ đầu) | Điểm mock (cũ) | Điểm `Vietnamese_Embedding` (mới) | Đúng với dự đoán? |
+|------|---------|--------------|-------------------------|--------------------|
+| 1 | cao | 0.0167 | **0.9163** | ✓ Đúng — rất cao, đúng như kỳ vọng cho 1 cặp paraphrase |
+| 2 | cao | -0.1566 | **0.5973** | ✓ Đúng — khá cao (cùng chủ đề đổi trả/hoàn tiền, khác chi tiết) |
+| 3 | thấp | 0.1338 | **0.3196** | ✓ Đúng — thấp nhất trong 5 cặp |
+| 4 | cao | 0.0727 | **0.8866** | ✓ Đúng — rất cao (2 câu gần như giống hệt cấu trúc) |
+| 5 | thấp | -0.0096 | **0.3634** | ✓ Đúng — thấp |
+
+**5/5 dự đoán đúng** khi dùng embedding thật — đảo ngược hoàn toàn so với kết quả mock (chỉ 1/5 đúng, và đúng một cách tình cờ). Điều này xác nhận trực tiếp giả thuyết nêu ở trên: vấn đề nằm ở **chất lượng embedding**, không phải công thức `compute_similarity()` (công thức cosine giống hệt nhau ở cả 2 lần chạy). Đây cũng là minh chứng thực nghiệm rõ nhất trong toàn bộ báo cáo cho lý do vì sao README/exercises.md nhấn mạnh: **không dùng mock embedder để kết luận về chất lượng ngữ nghĩa/retrieval**.
+
 ---
 
 ## 5. Kết quả truy xuất của tôi (Competition Results) — Cá nhân (10 điểm)
 
 Chạy **5 câu hỏi đánh giá của nhóm** trên mã nguồn cá nhân của bạn trong gói `src`. **5 câu hỏi này phải trùng với các thành viên cùng nhóm** (xem `REPORT_NHOM.md`).
 
-> **Đây là bản chạy đầu (draft)** trên 5 câu hỏi do tôi soạn sẵn trong `REPORT_NHOM.md` — nhóm chưa chính thức chốt nên số liệu có thể đổi khi câu hỏi được điều chỉnh. Cấu hình: `FixedSizeChunker(chunk_size=500, overlap=50)` nạp toàn bộ 6 tài liệu (429 chunks) qua `ingest.build_knowledge_base`, dùng `_mock_embed` (chưa cài được `sentence-transformers` — xem ghi chú bên dưới) và `llm_fn` giả lập (chưa có API key thật) chỉ để kiểm tra luồng agent chạy được, không phản ánh chất lượng câu trả lời thật.
+> **Bản chạy đầu dùng mock embedder** cho kết quả gần như ngẫu nhiên (1/5 đúng doc, và đúng nhờ metadata filter chứ không nhờ embedding — xem lịch sử ở git). Sau khi wiring được embedder thật (`FPTEmbedder`, model `Vietnamese_Embedding`, FPT AI Marketplace, xem `src/LuongDucThang/embeddings.py`) và LLM thật (`Llama-3.3-70B-Instruct`, cùng nền tảng) cho `llm_fn`, tôi chạy lại toàn bộ pipeline. Cấu hình: `FixedSizeChunker(chunk_size=500, overlap=50)` nạp 6 tài liệu → 429 chunks qua `ingest.load_documents`/`chunk_document`.
 
 | # | Câu hỏi (Query) | Top-1 Chunk truy xuất được (tóm tắt) | Điểm Score | Có liên quan không? (Relevant) | Câu trả lời của Agent (tóm tắt) |
 |---|-------|--------------------------------|-------|-----------|------------------------|
-| 1 | Bao nhiêu ngày để yêu cầu trả hàng/hoàn tiền? | Chunk từ `shopee-marketplace-terms` (sai tài liệu, nội dung về đăng bán sản phẩm) | 0.355 | ✗ Không | (llm giả lập, không đánh giá được) |
-| 2 | % diện tích ảnh sản phẩm tối thiểu? *(filter seller)* | Chunk từ `shopee-seller-listing-rules` (đúng tài liệu, nhưng đúng nhờ filter ép về 1 doc duy nhất có `customer_role=seller` — nội dung chunk cụ thể lại nói về hàng hóa cấm, không phải yêu cầu ảnh) | 0.392 | ~ Một phần (đúng doc do filter, sai đoạn nội dung) | (llm giả lập, không đánh giá được) |
-| 3 | Khoảng giá trị dùng được Apple Pay? | Chunk từ `shopee-marketplace-terms` (sai tài liệu); đáp án đúng nằm ở `shopee-payment-methods` nhưng chỉ xếp hạng 2 | 0.383 | ✗ Không (đúng doc chỉ ở top-2) | (llm giả lập, không đánh giá được) |
-| 4 | Giới hạn kích thước/cân nặng kênh Hỏa Tốc? | Chunk từ `shopee-marketplace-terms` (sai tài liệu) | 0.330 | ✗ Không | (llm giả lập, không đánh giá được) |
-| 5 | Chính sách bảo mật áp dụng đối tượng nào? | Chunk từ `shopee-shipping-policy` (sai tài liệu) | 0.379 | ✗ Không | (llm giả lập, không đánh giá được) |
+| 1 | Bao nhiêu ngày để yêu cầu trả hàng/hoàn tiền? | `shopee-returns-refund` — đúng đoạn nói về "trả hàng...Sản Phẩm ở trạng thái..." gần mục 3.2 | 0.6164 | ✓ Có | "15 ngày kể từ khi đơn hàng giao thành công, riêng thực phẩm tươi sống/đông lạnh chỉ có 24 giờ." — **khớp gold answer** |
+| 2 | % diện tích ảnh sản phẩm tối thiểu? *(filter seller)* | `shopee-seller-listing-rules` — đúng đoạn "...diện tích sản phẩm thật phải chiếm ít nhất 40% diện tích toàn ảnh" | 0.5016 | ✓ Có | "Tối thiểu 40% diện tích ảnh." — **khớp gold answer** |
+| 3 | Khoảng giá trị dùng được Apple Pay? | `shopee-payment-methods` — đúng đoạn "...giá trị thanh toán cuối cùng (gồm phí vận chuyển...) từ 10.000 VNĐ trở..." | 0.6023 | ✓ Có (chunk đúng) | ✗ "Từ 10.000 VNĐ đến 120.000.000 VNĐ" — **SAI**, đây là khoảng của Google Pay chứ không phải Apple Pay (đúng phải là 25.000.000 VNĐ) dù chunk truy xuất chứa đúng thông tin |
+| 4 | Giới hạn kích thước/cân nặng kênh Hỏa Tốc? | `shopee-shipping-policy` — bảng giới hạn khối lượng/kích thước | 0.4449 | ✓ Có | "Kích thước tối đa 60x60x60cm, cân nặng tối đa 30kg." — **khớp gold answer** |
+| 5 | Chính sách bảo mật áp dụng đối tượng nào? | `shopee-privacy-policy` — đoạn về trẻ em dưới 13 tuổi (không phải đúng mục 1.5 nêu trong gold answer) | 0.5662 | ~ Một phần | "Áp dụng cho tất cả người dùng, kể cả trẻ em dưới 13 tuổi (có điều kiện giám sát của phụ huynh)." — đúng nội dung tài liệu nhưng **không nêu rõ "cả Người Bán và Người Mua"** như gold answer (mục 1.5) vì top-3 không lấy trúng đúng đoạn đó |
 
-**Bao nhiêu câu hỏi trả về chunk có liên quan trong top-3?** 1 / 5 (chỉ Q2 — vốn được đảm bảo đúng doc nhờ `metadata_filter`, không phải nhờ chất lượng ngữ nghĩa của mock embedder). Q3 có đúng doc nhưng ở top-2 nên không tính là top-1 liên quan.
+**Bao nhiêu câu hỏi trả về chunk có liên quan trong top-3?** **5 / 5** — top-1 luôn đúng tài liệu kỳ vọng (so với 1/5 khi dùng mock). Đây là bằng chứng thực nghiệm rõ ràng nhất trong báo cáo này về tầm quan trọng của embedding model thật.
 
-**Phân tích thất bại (liên hệ Bài tập 3.5):** Kết quả này xác nhận đúng cảnh báo của lab — `_mock_embed` sinh vector từ hash MD5, không mã hoá ngữ nghĩa, nên với văn bản dài và nhiều tài liệu (429 chunks từ 6 văn bản pháp lý dài, nội dung/văn phong khá giống nhau) độ chính xác truy xuất gần như ngẫu nhiên. Tôi có thử cài `sentence-transformers` để chạy `EMBEDDING_PROVIDER=local` cho kết quả ý nghĩa hơn, nhưng môi trường máy đang có xung đột phiên bản `huggingface-hub` với một công cụ khác đã cài sẵn (`aider-chat` khoá cứng `huggingface-hub==1.4.1`, trong khi `sentence-transformers` cần `<1.0`) — nên đã revert lại để không phá công cụ đó, và tạm dùng mock cho bản chạy này. **Kết luận: cần chạy lại toàn bộ benchmark này với `EMBEDDING_PROVIDER=local` (trên máy không có xung đột dependency) trước khi nhóm dùng số liệu này để so sánh chiến lược thật** — số liệu mock ở đây chỉ chứng minh pipeline `ingest → EmbeddingStore → KnowledgeBaseAgent` chạy đúng luồng kỹ thuật.
+**Phân tích thất bại (liên hệ Bài tập 3.5) — Q3 là ca lỗi đáng chú ý nhất:** dù retrieval lấy đúng tài liệu và đúng đoạn chứa câu trả lời (top-1/2/3 đều trích đúng câu "từ 10.000 VNĐ đến 25.000.000 VNĐ" của Apple Pay), **agent vẫn trả lời sai** — trả về khoảng giá trị của Google Pay (10.000–120.000.000 VNĐ), một mục khác nằm rất gần trong cùng tài liệu (`shopee-payment-methods` liệt kê 9 phương thức thanh toán liên tiếp). Đây là lỗi thuộc nhóm **"Grounding Quality"** trong checklist đánh giá của README: retrieval đúng (điều kiện cần) không đảm bảo LLM tổng hợp đúng (điều kiện đủ) khi ngữ cảnh chứa nhiều số liệu tương tự nhau về cùng 1 chủ đề (nhiều "phương thức thanh toán" với các ngưỡng VNĐ khác nhau nằm sát nhau). Đề xuất cải thiện: (1) chunk nhỏ hơn/tách theo từng phương thức thanh toán riêng biệt (heading-based chunking) để mỗi chunk chỉ chứa 1 phương thức, giảm nhiễu; (2) prompt yêu cầu agent trích dẫn nguyên văn câu chứa số liệu thay vì diễn giải. Q5 là lỗi nhẹ hơn — retrieval "trúng tài liệu nhưng lệch đoạn" (miss đúng mục 1.5), thuộc nhóm **"Retrieval Precision"**: văn bản `shopee-privacy-policy` dài 43k ký tự bị chia thành nhiều chunk 500 ký tự, và câu trả lời ngắn gọn ở mục 1.5 bị "chìm" giữa các đoạn dài hơn về chủ đề tương tự (thu thập/xử lý dữ liệu trẻ em) có điểm tương đồng cao hơn với câu hỏi.
 
 **Điều hay nhất tôi học được từ thành viên khác / nhóm khác (qua demo):**
 > *(cập nhật sau buổi demo nhóm)*
@@ -148,5 +162,5 @@ Chạy **5 câu hỏi đánh giá của nhóm** trên mã nguồn cá nhân củ
 | Hướng tiếp cận của tôi (My Approach) | 10 / 10 |
 | Hoàn thiện code (Core Implementation — tests) | 30 / 30 |
 | Dự đoán độ tương tự (Similarity Predictions) | 5 / 5 |
-| Kết quả truy xuất của tôi (Competition Results) | 6 / 10 *(pipeline chạy đúng, phân tích thất bại trung thực; điểm truy xuất thấp do dùng mock embedder — cần chạy lại với local embedder + câu hỏi đã nhóm chốt)* |
-| **Tổng phần cá nhân** | **56 / 60** |
+| Kết quả truy xuất của tôi (Competition Results) | 9 / 10 *(chạy với embedder + LLM thật, 5/5 đúng tài liệu top-1, có phân tích thất bại cụ thể (Q3, Q5) theo đúng khung Grounding Quality/Retrieval Precision; trừ nhẹ vì 5 câu hỏi vẫn là bản nháp, chưa được cả nhóm chính thức chốt)* |
+| **Tổng phần cá nhân** | **59 / 60** |

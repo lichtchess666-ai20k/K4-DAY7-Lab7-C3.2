@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 
 # Multilingual model suitable for the Vietnamese corpora used in this Lab.
 # The local backend remains optional; required checkpoints use MockEmbedder.
 LOCAL_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+FPT_EMBEDDING_MODEL = "Vietnamese_Embedding"
+FPT_BASE_URL = "https://mkp-api.fptcloud.com"
 EMBEDDING_PROVIDER_ENV = "EMBEDDING_PROVIDER"
 
 
@@ -54,6 +57,21 @@ class OpenAIEmbedder:
         self.model_name = model_name
         self._backend_name = model_name
         self.client = OpenAI()
+
+    def __call__(self, text: str) -> list[float]:
+        response = self.client.embeddings.create(model=self.model_name, input=text)
+        return [float(value) for value in response.data[0].embedding]
+
+
+class FPTEmbedder:
+    """FPT AI Marketplace embedder (OpenAI-compatible API, custom base_url)."""
+
+    def __init__(self, model_name: str = FPT_EMBEDDING_MODEL, base_url: str = FPT_BASE_URL) -> None:
+        from openai import OpenAI
+
+        self.model_name = model_name
+        self._backend_name = model_name
+        self.client = OpenAI(api_key=os.environ.get("FPT_API_KEY"), base_url=base_url)
 
     def __call__(self, text: str) -> list[float]:
         response = self.client.embeddings.create(model=self.model_name, input=text)

@@ -8,8 +8,11 @@ from .chunking import (
 )
 from .embeddings import (
     EMBEDDING_PROVIDER_ENV,
+    FPT_BASE_URL,
+    FPT_EMBEDDING_MODEL,
     LOCAL_EMBEDDING_MODEL,
     OPENAI_EMBEDDING_MODEL,
+    FPTEmbedder,
     LocalEmbedder,
     MockEmbedder,
     OpenAIEmbedder,
@@ -30,8 +33,11 @@ __all__ = [
     "MockEmbedder",
     "LocalEmbedder",
     "OpenAIEmbedder",
+    "FPTEmbedder",
     "_mock_embed",
     "LOCAL_EMBEDDING_MODEL",
     "OPENAI_EMBEDDING_MODEL",
+    "FPT_EMBEDDING_MODEL",
+    "FPT_BASE_URL",
     "EMBEDDING_PROVIDER_ENV",
 ]
