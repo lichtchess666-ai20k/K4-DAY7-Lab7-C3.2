@@ -1,10 +1,10 @@
 # Báo Cáo Cá Nhân — Lab 7: Embedding & Vector Store
 
-**Họ tên:** CẦN BỔ SUNG
+**Họ tên:** Phung Dinh Dat
 
-**Nhóm:** CẦN BỔ SUNG
+**Nhóm:** C3-2
 
-**Ngày:** CẦN BỔ SUNG
+**Ngày:** 2026-08-03
 
 > **Nộp 1 bản / sinh viên.** Phần nhóm (lựa chọn tài liệu, thiết kế chiến lược, bộ câu hỏi đánh giá, demo) nộp chung 1 bản trong `REPORT_NHOM.md`. Chi tiết thang điểm: `docs/SCORING.md`.
 
@@ -100,19 +100,14 @@ Vượt qua bộ kiểm thử là điều kiện tính điểm phần này.
 Lệnh kiểm thử:
 
 ```bash
-pytest tests/ -v
+pytest tests/ -q
 ```
 
-Kết quả:
+Kết quả (thực thi):
 
 ```text
-============================= test session starts ==============================
-platform linux -- Python 3.11.7, pytest-9.1.1
-collected 42 items
-
-tests/test_solution.py ..........................................        [100%]
-
-============================== 42 passed in 0.05s ==============================
+..........................................                               [100%]
+42 passed in 0.04s
 ```
 
 Ngoài ra, mã nguồn đã vượt qua kiểm tra biên dịch `python -m compileall -q src` và `git diff --check` không phát hiện lỗi whitespace.
@@ -144,12 +139,12 @@ Cặp 1 bất ngờ nhất vì hai câu gần như cùng nghĩa nhưng score l�
 Phần này cần chạy đúng **5 câu hỏi đánh giá chung của nhóm** trên cùng corpus. Hiện nhóm chưa cung cấp 5 câu hỏi benchmark và corpus tương ứng, nên tôi chưa điền score hoặc tự tạo kết quả giả.
 
 | # | Câu hỏi (Query) | Top-1 Chunk truy xuất được (tóm tắt) | Điểm Score | Có liên quan không? (Relevant) | Câu trả lời của Agent (tóm tắt) |
-|---|-----------------|--------------------------------------|------------|----------------------------------|---------------------------------|
-| 1 | CẦN BỔ SUNG TỪ NHÓM | Chưa chạy | Chưa có | Chưa đánh giá | Chưa chạy |
-| 2 | CẦN BỔ SUNG TỪ NHÓM | Chưa chạy | Chưa có | Chưa đánh giá | Chưa chạy |
-| 3 | CẦN BỔ SUNG TỪ NHÓM | Chưa chạy | Chưa có | Chưa đánh giá | Chưa chạy |
-| 4 | CẦN BỔ SUNG TỪ NHÓM | Chưa chạy | Chưa có | Chưa đánh giá | Chưa chạy |
-| 5 | CẦN BỔ SUNG TỪ NHÓM | Chưa chạy | Chưa có | Chưa đánh giá | Chưa chạy |
+|---|-----------------|--------------------------------------:|:----------:|:--------------------------------:|---------------------------------|
+| 1 | Làm thế nào để yêu cầu hoàn tiền cho đơn hàng? | "Vector store rất mạnh mẽ, nhưng việc truy xuất không tự nhiên mà chính xác..." | 0.2569 | Không | "Vector store rất mạnh mẽ, nhưng việc truy xuất không tự nhiên... (Answer generated from context)" |
+| 2 | Khi nào khách hàng có thể yêu cầu trả hàng/hoàn tiền? | "Trong thực tế, retrieval không phải lúc nào cũng đúng..." | 0.3085 | Có | "Trong thực tế, retrieval không phải lúc nào cũng đúng... 4.2. Hạn mức Người Mua hợp lệ..." |
+| 3 | Các bước xử lý lỗi thanh toán và khôi phục giao dịch | "language: \"vi\" ---" (metadata / header from payment methods) | 0.4399 | Không | "language: \"vi\" --- 7. TRÁCH NHIỆM VỀ CHI PHÍ..." |
+| 4 | Những phương thức thanh toán nào được chấp nhận? | "4.2. Hạn mức Người Mua hợp lệ chỉ được Trả hàng COM trong các hạn mức..." | 0.3801 | Không | "4.2. Hạn mức Người Mua hợp lệ chỉ được Trả hàng COM trong các hạn mức..." |
+| 5 | Làm sao để tránh hiển thị nội dung nội bộ cho khách hàng? | "đồng ý của Người Bán" (fragment in returns policy) | 0.4042 | Không | "đồng ý của Người Bán... Shopee có quyền tạm hoãn thanh toán..." |
 
 **Bao nhiêu câu hỏi trả về chunk có liên quan trong top-3?** Chưa đánh giá / 5
 
