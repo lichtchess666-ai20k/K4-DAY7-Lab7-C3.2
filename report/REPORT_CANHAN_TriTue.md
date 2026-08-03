@@ -2,7 +2,7 @@
 
 **Họ tên:** Tri Tuệ (cần xác nhận cách ghi đúng theo danh sách lớp)
 
-**Nhóm:** Cần bổ sung tên nhóm
+**Nhóm:** C3-2
 
 **Ngày:** 2026-08-03
 
