@@ -1,10 +1,11 @@
 # Phần cá nhân TriTue — Lab 7
 
-Package này là lời giải cá nhân độc lập cho các TODO trong `src/chunking.py`, `src/store.py` và `src/agent.py`. Package gốc được giữ nguyên; bộ test chọn lời giải này qua `LAB_SOLUTION_PACKAGE=src.TriTue`.
+Thư mục này chứa lời giải cá nhân của TriTue cho pipeline chunking, embedding,
+vector store, RAG agent và phần đóng góp vào benchmark chung của nhóm.
 
-## 1. Chuẩn bị môi trường Windows
+## 1. Chuẩn bị môi trường
 
-Cài Python 3.11, sau đó mở PowerShell tại thư mục `K4-DAY7-Lab7-C3.2`:
+Mở PowerShell tại thư mục `K4-DAY7-Lab7-C3.2`:
 
 ```powershell
 py -3.11 -m venv .venv
@@ -12,42 +13,64 @@ py -3.11 -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-## 2. Chạy test phần cá nhân
+Để chạy benchmark với multilingual embedding thật:
+
+```powershell
+python -m pip install -r requirements-local.txt
+```
+
+## 2. Chạy test
 
 ```powershell
 $env:LAB_SOLUTION_PACKAGE = 'src.TriTue'
 python -m pytest tests/ -v
 ```
 
-Kết quả gần nhất trong môi trường hiện có: 42 test của đề và 26 test bổ sung đều pass trên Python 3.13.7. Cần chạy lại lệnh trên bằng Python 3.11 trước khi nộp vì đây là phiên bản chuẩn của lab.
-
-## 3. Chạy demo cá nhân
+## 3. Chạy demo cá nhân ban đầu
 
 ```powershell
 python -m src.TriTue
 ```
 
-Demo thực hiện:
+Demo này so sánh ba chiến lược chunking có sẵn, kiểm tra similarity, nạp vector
+store và chạy năm câu hỏi mẫu của phần cá nhân.
 
-- so sánh ba chiến lược chunking;
-- tính điểm cho năm cặp similarity;
-- nạp corpus khởi động K4 bằng `RecursiveChunker(chunk_size=500)`;
-- chạy đúng năm benchmark query, gồm một query lọc `customer_role=seller`;
-- tạo câu trả lời trích xuất từ chính tập chunk đã truy xuất.
+## 4. Phương pháp chunk riêng cho phần làm việc nhóm
 
-Mock embedding chỉ dùng để kiểm tra luồng xử lý. Để đánh giá tiếng Việt có ý nghĩa, cài `requirements-local.txt` và thay `_mock_embed` bằng `LocalEmbedder` trong benchmark của nhóm.
+`ContextualParagraphWindowChunker` là phương pháp riêng của TriTue:
 
-## 4. File thuộc phần cá nhân
+- tách văn bản thành các khối đoạn bằng dòng trống;
+- ghép các đoạn liền kề đến giới hạn ký tự;
+- giữ lại một đoạn cuối làm ngữ cảnh chồng lấp cho chunk tiếp theo;
+- dùng cửa sổ theo ranh giới từ nếu một đoạn đơn lẻ quá dài.
 
-- `src/TriTue/`: mã nguồn cá nhân.
-- `tests/test_tritue_solution.py`: test edge case bổ sung.
-- `report/REPORT_CANHAN_TriTue.md`: báo cáo cá nhân đã điền từ kết quả demo.
+Đây không phải phương pháp chia theo từng dòng, từng câu, heading/điều khoản hay
+loại chính sách. Cấu hình mặc định là `chunk_size=900`,
+`overlap_paragraphs=1`, `word_overlap=20`.
 
-## 5. Việc cần thay bằng dữ liệu thật trước khi nộp
+Chạy benchmark trên đúng sáu tài liệu trong `data/k4_ecommerce` bằng local
+multilingual embedding:
 
-1. Xác nhận họ tên và tên nhóm trong báo cáo.
-2. Dùng corpus 5–10 tài liệu công khai của nhóm thay cho hai file khởi động.
-3. Dùng đúng năm query và gold answer chung của nhóm.
-4. Chạy local multilingual embedder và cập nhật điểm similarity/retrieval.
-5. Ghi bài học thực tế sau phần so sánh với thành viên khác.
-6. Nếu hệ thống nộp bài chỉ nhận đúng tên `report/REPORT_CANHAN.md`, đổi tên bản `REPORT_CANHAN_TriTue.md` hoặc chép nội dung bản này vào file đó trước khi nộp.
+```powershell
+python -m src.TriTue.group_benchmark --output src/TriTue/GROUP_CONTRIBUTION.md
+```
+
+Chỉ smoke test pipeline khi chưa cài model local:
+
+```powershell
+python -m src.TriTue.group_benchmark --mock --output src/TriTue/GROUP_CONTRIBUTION.md
+```
+
+Mock embedding không có ý nghĩa ngữ nghĩa; điểm và thứ hạng từ chế độ này không
+được dùng để kết luận chiến lược retrieval tốt hay kém.
+
+## 5. File bàn giao
+
+- `custom_chunking.py`: implementation phương pháp chunk riêng.
+- `group_benchmark.py`: loader corpus, năm query chung, retrieval top-3 và CLI.
+- `GROUP_CONTRIBUTION.md`: kết quả cá nhân để gửi nhóm trưởng tổng hợp.
+- `tests/test_tritue_solution.py`: test edge case và test hồi quy.
+- `report/REPORT_CANHAN_TriTue.md`: báo cáo cá nhân.
+
+Runner cá nhân không đọc-ghi hay chỉnh sửa `report/REPORT_NHOM.md`; báo cáo nhóm
+do nhóm trưởng quản lý.

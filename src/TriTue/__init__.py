@@ -8,6 +8,7 @@ from .chunking import (
     SentenceChunker,
     compute_similarity,
 )
+from .custom_chunking import ContextualParagraphWindowChunker
 from .embeddings import (
     EMBEDDING_PROVIDER_ENV,
     LOCAL_EMBEDDING_MODEL,
@@ -26,6 +27,7 @@ __all__ = [
     "SentenceChunker",
     "RecursiveChunker",
     "ChunkingStrategyComparator",
+    "ContextualParagraphWindowChunker",
     "compute_similarity",
     "MockEmbedder",
     "LocalEmbedder",

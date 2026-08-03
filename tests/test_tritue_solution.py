@@ -9,6 +9,7 @@ import pytest
 
 from src.TriTue import (
     ChunkingStrategyComparator,
+    ContextualParagraphWindowChunker,
     Document,
     EmbeddingStore,
     FixedSizeChunker,
@@ -19,6 +20,255 @@ from src.TriTue import (
     _mock_embed,
     compute_similarity,
 )
+
+
+def test_contextual_paragraph_chunker_packs_short_table_cells():
+    text = "Hỏa Tốc\n\nInstant\n\n60 x 60 x 60\n\n30"
+
+    chunks = ContextualParagraphWindowChunker(chunk_size=100).chunk(text)
+
+    assert chunks == [text]
+
+
+def test_contextual_paragraph_chunker_overlaps_last_paragraph():
+    text = "A" * 40 + "\n\n" + "B" * 40 + "\n\n" + "C" * 40
+
+    chunks = ContextualParagraphWindowChunker(
+        chunk_size=85, overlap_paragraphs=1
+    ).chunk(text)
+
+    assert chunks == [
+        "A" * 40 + "\n\n" + "B" * 40,
+        "B" * 40 + "\n\n" + "C" * 40,
+    ]
+
+
+def test_contextual_paragraph_chunker_splits_long_paragraph_at_words():
+    text = " ".join(f"word{index}" for index in range(80))
+
+    chunks = ContextualParagraphWindowChunker(
+        chunk_size=90, overlap_paragraphs=0, word_overlap=3
+    ).chunk(text)
+
+    assert len(chunks) > 1
+    assert all(len(chunk) <= 90 for chunk in chunks)
+    assert chunks[0].split()[-3:] == chunks[1].split()[:3]
+
+
+def test_contextual_paragraph_chunker_validates_configuration_and_empty_text():
+    assert ContextualParagraphWindowChunker().chunk(" \r\n\t") == []
+
+    with pytest.raises(ValueError, match="chunk_size"):
+        ContextualParagraphWindowChunker(chunk_size=0)
+    with pytest.raises(ValueError, match="overlap_paragraphs"):
+        ContextualParagraphWindowChunker(overlap_paragraphs=-1)
+    with pytest.raises(ValueError, match="word_overlap"):
+        ContextualParagraphWindowChunker(word_overlap=-1)
+
+
+def test_contextual_paragraph_chunker_preserves_a_single_oversized_token():
+    token = "x" * 120
+
+    chunks = ContextualParagraphWindowChunker(
+        chunk_size=20, overlap_paragraphs=0, word_overlap=5
+    ).chunk(token)
+
+    assert chunks == [token]
+
+
+def test_contextual_paragraph_chunker_preserves_repeated_paragraphs_without_overlap():
+    chunks = ContextualParagraphWindowChunker(
+        chunk_size=2,
+        overlap_paragraphs=0,
+    ).chunk("AA\n\nAA")
+
+    assert chunks == ["AA", "AA"]
+
+
+def test_group_benchmark_contract_has_five_queries_and_seller_filter():
+    from src.TriTue.group_benchmark import BENCHMARK_QUERIES
+
+    assert len(BENCHMARK_QUERIES) == 5
+    assert BENCHMARK_QUERIES[1]["metadata_filter"] == {
+        "customer_role": "seller"
+    }
+    assert all(
+        benchmark["query"]
+        and benchmark["gold_answer"]
+        and benchmark["expected_doc_id"]
+        and benchmark["evidence_groups"]
+        for benchmark in BENCHMARK_QUERIES
+    )
+
+
+def test_group_relevance_requires_document_and_all_evidence_groups():
+    from src.TriTue.group_benchmark import is_relevant
+
+    benchmark = {
+        "expected_doc_id": "returns",
+        "evidence_groups": [("15 ngày",), ("24 giờ",)],
+    }
+    wrong_document = {
+        "content": "thời hạn 15 ngày, riêng thực phẩm là 24 giờ",
+        "metadata": {"doc_id": "shipping"},
+    }
+    incomplete_content = {
+        "content": "thời hạn 15 ngày",
+        "metadata": {"doc_id": "returns"},
+    }
+    relevant = {
+        "content": "Thời hạn 15 NGÀY, riêng thực phẩm là 24 GIỜ.",
+        "metadata": {"doc_id": "returns"},
+    }
+
+    assert not is_relevant(wrong_document, benchmark)
+    assert not is_relevant(incomplete_content, benchmark)
+    assert is_relevant(relevant, benchmark)
+
+
+def test_group_corpus_loader_reads_six_files_and_preserves_metadata():
+    from src.TriTue.group_benchmark import load_corpus
+
+    data_dir = Path(__file__).resolve().parents[1] / "data" / "k4_ecommerce"
+    chunks = load_corpus(data_dir, ContextualParagraphWindowChunker())
+
+    assert {chunk.metadata["doc_id"] for chunk in chunks} == {
+        "shopee-marketplace-terms",
+        "shopee-payment-methods",
+        "shopee-privacy-policy",
+        "shopee-returns-refund",
+        "shopee-seller-listing-rules",
+        "shopee-shipping-policy",
+    }
+    assert all(chunk.metadata["source_url"] for chunk in chunks)
+    assert all(chunk.metadata["chunking_strategy"] == "contextual_paragraph_window" for chunk in chunks)
+    assert all(isinstance(chunk.metadata["chunk_index"], int) for chunk in chunks)
+    assert all(chunk.id.endswith(str(chunk.metadata["chunk_index"])) for chunk in chunks)
+
+
+def test_every_group_benchmark_has_matching_evidence_in_the_real_corpus():
+    from src.TriTue.group_benchmark import (
+        BENCHMARK_QUERIES,
+        is_relevant,
+        load_corpus,
+    )
+
+    data_dir = Path(__file__).resolve().parents[1] / "data" / "k4_ecommerce"
+    chunks = load_corpus(data_dir, ContextualParagraphWindowChunker())
+
+    for benchmark in BENCHMARK_QUERIES:
+        assert any(
+            is_relevant(
+                {"content": chunk.content, "metadata": chunk.metadata},
+                benchmark,
+            )
+            for chunk in chunks
+        ), benchmark["expected_doc_id"]
+
+
+def test_rendered_mock_benchmark_discloses_semantic_limitation():
+    from src.TriTue.group_benchmark import render_markdown, run_benchmark
+
+    data_dir = Path(__file__).resolve().parents[1] / "data" / "k4_ecommerce"
+    summary = run_benchmark(
+        _mock_embed,
+        data_dir,
+        embedding_label="mock",
+    )
+    markdown = render_markdown(summary)
+
+    assert "không có ý nghĩa ngữ nghĩa" in markdown
+    assert "ContextualParagraphWindowChunker" in markdown
+    assert len(summary["queries"]) == 5
+    assert summary["queries"][1]["metadata_filter"] == {
+        "customer_role": "seller"
+    }
+    assert all(len(item["results"]) == 3 for item in summary["queries"])
+
+
+def test_group_benchmark_marks_relevance_without_generating_fake_answers():
+    from src.TriTue.group_benchmark import render_markdown
+
+    summary = {
+        "embedding_label": "unit-test",
+        "chunker": {
+            "name": "ContextualParagraphWindowChunker",
+            "chunk_size": 900,
+            "overlap_paragraphs": 1,
+            "word_overlap": 20,
+        },
+        "total_chunks": 1,
+        "average_chunk_length": 42.0,
+        "top_k": 3,
+        "queries": [
+            {
+                "number": 1,
+                "query": "Câu hỏi kiểm thử?",
+                "gold_answer": "Đáp án chỉ để đối chiếu.",
+                "expected_doc_id": "expected-demo",
+                "metadata_filter": None,
+                "first_relevant_rank": 1,
+                "top_k_relevant": True,
+                "results": [
+                    {
+                        "rank": 1,
+                        "content": "Bằng chứng truy xuất thật.",
+                        "metadata": {"doc_id": "demo"},
+                        "score": 0.9,
+                        "relevant": True,
+                    }
+                ],
+            }
+        ],
+    }
+
+    markdown = render_markdown(summary)
+
+    assert "Bằng chứng truy xuất thật" in markdown
+    assert "Đáp án chỉ để đối chiếu" not in markdown
+    assert "Expected document: `expected-demo`" in markdown
+
+
+def test_group_benchmark_cli_handles_windows_cp1252_stdout(tmp_path):
+    project_root = Path(__file__).resolve().parents[1]
+    output_path = tmp_path / "benchmark.md"
+    environment = dict(os.environ)
+    environment["PYTHONIOENCODING"] = "cp1252"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "src.TriTue.group_benchmark",
+            "--mock",
+            "--output",
+            str(output_path),
+        ],
+        cwd=project_root,
+        env=environment,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr.decode("utf-8", errors="replace")
+    assert output_path.is_file()
+
+
+def test_group_benchmark_cli_refuses_to_write_the_group_report(monkeypatch):
+    import src.TriTue.group_benchmark as group_benchmark
+
+    group_report = Path(__file__).resolve().parents[1] / "report" / "REPORT_NHOM.md"
+
+    def must_not_run(*args, **kwargs):
+        raise AssertionError("benchmark must stop before writing the group report")
+
+    monkeypatch.setattr(group_benchmark, "run_benchmark", must_not_run)
+
+    exit_code = group_benchmark.main(
+        ["--mock", "--output", str(group_report)]
+    )
+
+    assert exit_code == 2
 
 
 def test_tritue_document_keeps_metadata():
@@ -270,15 +520,19 @@ def test_personal_demo_defines_exactly_five_k4_queries():
     assert all(item["gold_answer"] and item["expected_doc_id"] for item in BENCHMARK_QUERIES)
 
 
-def test_personal_demo_chunks_the_two_starter_documents_at_500_characters():
+def test_personal_demo_chunks_the_current_corpus_at_500_characters():
     from src.TriTue.__main__ import build_starter_store, load_starter_chunks
 
     chunks = load_starter_chunks()
     store = build_starter_store()
 
     assert {chunk.metadata["doc_id"] for chunk in chunks} == {
-        "k4-returns-policy",
-        "k4-seller-listing",
+        "shopee-marketplace-terms",
+        "shopee-payment-methods",
+        "shopee-privacy-policy",
+        "shopee-returns-refund",
+        "shopee-seller-listing-rules",
+        "shopee-shipping-policy",
     }
     assert all(len(chunk.content) <= 500 for chunk in chunks)
     assert store.get_collection_size() == len(chunks)

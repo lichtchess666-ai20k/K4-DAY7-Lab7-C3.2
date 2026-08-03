@@ -111,7 +111,7 @@ def load_starter_chunks() -> list[Document]:
 
 
 def build_starter_store() -> EmbeddingStore:
-    """Build a deterministic store from the two K4 starter documents."""
+    """Build a deterministic store from the current K4 corpus."""
 
     store = EmbeddingStore("tritue_k4_starter", embedding_fn=_mock_embed)
     store.add_documents(load_starter_chunks())
