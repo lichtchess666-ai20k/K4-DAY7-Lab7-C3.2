@@ -130,18 +130,20 @@ Chạy `ChunkingStrategyComparator().compare(body, chunk_size=500)` trên 3 tài
 
 > Cách chấm (theo `docs/SCORING.md`): **2 điểm/câu** — top-3 chứa chunk liên quan + agent trả lời đúng (2), có liên quan nhưng thiếu/không ở top-1 (1), không có trong top-3 (0).
 >
-> **Mới có kết quả của Lương Đức Thắng** (`FixedSizeChunker(500,50)`, `_mock_embed`) — bảng dưới sẽ cập nhật thêm cột/kết quả khi các thành viên khác chạy xong chiến lược riêng. Xem chi tiết từng câu tại `REPORT_CANHAN_LuongDucThang.md` — Phần 5.
+> **Kết quả của Lương Đức Thắng** — 2 lần chạy: (a) `_mock_embed` (kiểm thử pipeline), (b) `FPTEmbedder` (`Vietnamese_Embedding`, FPT AI Marketplace, embedder thật) + `Llama-3.3-70B-Instruct` làm `llm_fn`. Bảng dưới dùng kết quả (b) làm chính; bảng sẽ cập nhật thêm cột khi các thành viên khác chạy xong chiến lược riêng. Chi tiết từng câu: `REPORT_CANHAN_LuongDucThang.md` — Phần 5.
 
 | # | Câu hỏi | Chiến lược tốt nhất cho câu này | Có chunk liên quan trong top-3? | Ghi chú |
 |---|---------|-------------------------------|-------------------------------|---------|
-| 1 | Thời hạn trả hàng/hoàn tiền | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Không | Mock embedder trả về sai tài liệu (`shopee-marketplace-terms`) ở cả top-3. |
-| 2 | % diện tích ảnh sản phẩm (seller) | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Có (đúng doc ở top-1) | Đúng tài liệu là nhờ `metadata_filter={"customer_role":"seller"}` ép về đúng 1 doc — không phải do embedding tốt; chunk cụ thể vẫn không chứa câu trả lời thật. |
-| 3 | Khoảng giá trị Apple Pay | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Có, nhưng ở top-2 (không phải top-1) | |
-| 4 | Giới hạn kích thước/cân nặng Hỏa Tốc | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Không | |
-| 5 | Phạm vi áp dụng chính sách bảo mật | *(chờ thêm dữ liệu từ đồng đội)* | Thắng: Không | |
+| 1 | Thời hạn trả hàng/hoàn tiền | Thắng: FixedSizeChunker(500,50) + `Vietnamese_Embedding` — **2/2 điểm** | Có (top-1, score 0.616) | Agent trả lời đúng và đầy đủ, khớp gold answer. Với mock embedder trước đó: sai hoàn toàn (0 điểm). |
+| 2 | % diện tích ảnh sản phẩm (seller) | Thắng: FixedSizeChunker(500,50) + `Vietnamese_Embedding` + filter `customer_role=seller` — **2/2 điểm** | Có (top-1, score 0.502) | Đúng cả tài liệu lẫn đúng đoạn nội dung (khác với lần chạy mock — khi đó đúng doc chỉ nhờ filter, sai đoạn). |
+| 3 | Khoảng giá trị Apple Pay | Thắng: FixedSizeChunker(500,50) + `Vietnamese_Embedding` — **1/2 điểm** | Có (top-1, score 0.602), chunk chứa đúng câu trả lời | **Retrieval đúng nhưng agent trả lời sai** (nhầm sang khoảng của Google Pay) — ca lỗi Grounding Quality, xem phân tích chi tiết ở `REPORT_CANHAN_LuongDucThang.md`. |
+| 4 | Giới hạn kích thước/cân nặng Hỏa Tốc | Thắng: FixedSizeChunker(500,50) + `Vietnamese_Embedding` — **2/2 điểm** | Có (top-1, score 0.445) | Agent trả lời đúng và đầy đủ, khớp gold answer. |
+| 5 | Phạm vi áp dụng chính sách bảo mật | Thắng: FixedSizeChunker(500,50) + `Vietnamese_Embedding` — **1/2 điểm** | Có (top-1, score 0.566), nhưng lệch đoạn (không trúng đúng mục 1.5) | Agent trả lời đúng nội dung tài liệu (về trẻ em dưới 13 tuổi) nhưng không nêu đúng ý gold answer ("cả Người Bán và Người Mua") — ca lỗi Retrieval Precision (chunk 500 ký tự làm câu trả lời ngắn ở mục 1.5 bị chunk khác "lấn át"). |
+
+**Điểm của Thắng: 8/10** (2+2+1+2+1).
 
 **Lọc bằng metadata có giúp ích không? Ở câu hỏi nào?**
-> Có — rõ nhất ở Q2: `search_with_filter(metadata_filter={"customer_role": "seller"})` đảm bảo kết quả chỉ đến từ `shopee-seller-listing-rules` (tài liệu duy nhất có `customer_role=seller`), loại trừ hoàn toàn nhiễu từ 5 tài liệu còn lại — đây là câu duy nhất "trúng đúng tài liệu" trong lần chạy mock của Thắng, và trúng nhờ metadata chứ không nhờ embedding. Điều này cho thấy giá trị của metadata filtering **độc lập** với chất lượng embedding: ngay cả khi embedding kém (như mock), filter theo `customer_role` vẫn thu hẹp không gian tìm kiếm hiệu quả. Cần đồng đội chạy thêm với embedder thật để so sánh mức độ cải thiện khi có + không có filter trên cùng 1 embedder tốt.
+> Có — rõ nhất ở Q2: `search_with_filter(metadata_filter={"customer_role": "seller"})` đảm bảo kết quả chỉ đến từ `shopee-seller-listing-rules` (tài liệu duy nhất có `customer_role=seller`), loại trừ hoàn toàn nhiễu từ 5 tài liệu còn lại. Điểm thú vị: khi dùng mock embedder, filter là **lý do duy nhất** Q2 tìm đúng tài liệu (bản thân embedding không giúp gì); khi dùng embedder thật, Q2 vẫn là 1 trong 2 câu đạt điểm tuyệt đối, cho thấy filter + embedding tốt **cộng hưởng** thay vì thay thế nhau — filter thu hẹp không gian tìm kiếm, embedding tốt đảm bảo tìm đúng đoạn trong không gian đã thu hẹp đó. Cần đồng đội chạy thêm để so sánh mức độ cải thiện này có nhất quán giữa các chiến lược chunking khác nhau không.
 
 ---
 
