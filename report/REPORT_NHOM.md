@@ -96,14 +96,21 @@ Chạy `ChunkingStrategyComparator().compare()` trên 2-3 tài liệu:
 ### Câu hỏi đánh giá & Câu trả lời chuẩn (nhóm thống nhất)
 
 > **Đúng 5 câu hỏi**, đa dạng, có thể kiểm chứng; **ít nhất 1 câu** cần lọc metadata mới trả lời tốt. Đây là bộ câu hỏi chung cho mọi thành viên chạy.
+>
+> **Bản nháp do Claude soạn** dựa trên nội dung thật của 6 tài liệu Shopee trong `data/k4_ecommerce/` — nhóm review, chỉnh sửa/thay câu nếu cần rồi mới chốt để cả nhóm cùng chạy benchmark (Bài tập 3.4).
 
 | # | Câu hỏi (Query) | Câu trả lời chuẩn (Gold Answer) | Chunk nào chứa thông tin? |
 |---|-------|-------------------------------|--------------------------|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
+| 1 | Người mua có bao nhiêu ngày để gửi yêu cầu trả hàng/hoàn tiền kể từ khi đơn hàng giao thành công? Trường hợp nào có thời hạn ngắn hơn? | 15 ngày kể từ khi đơn hàng được cập nhật giao hàng thành công; riêng thực phẩm tươi sống/đông lạnh chỉ có 24 giờ kể từ lúc giao thành công. | `shopee-returns-refund` — mục 3.2 |
+| 2 | *(cần `metadata_filter={"customer_role": "seller"}`)* Theo quy định đăng bán sản phẩm, hình ảnh sản phẩm do người bán tự chụp phải chiếm tối thiểu bao nhiêu % diện tích ảnh? | Phải có ít nhất 1 hình ảnh thật do chính Người Bán tự chụp, trong đó diện tích sản phẩm thật phải chiếm tối thiểu 40% diện tích toàn ảnh. | `shopee-seller-listing-rules` — mục C.1.b |
+| 3 | Đơn hàng thanh toán bằng Apple Pay trên Shopee cần có giá trị thanh toán cuối cùng trong khoảng nào? | Từ 10.000 VNĐ đến 25.000.000 VNĐ (đã gồm phí vận chuyển và các chi phí phát sinh khác, nếu có). | `shopee-payment-methods` — mục 7. Apple Pay |
+| 4 | Kiện hàng vận chuyển theo hình thức Hỏa Tốc (Instant) bị giới hạn kích thước và cân nặng tối đa bao nhiêu? | Tối đa mỗi cạnh (Cao x Dài x Rộng) 60 x 60 x 60 cm, giới hạn cân nặng 30kg. | `shopee-shipping-policy` — bảng giới hạn khối lượng/kích thước, mục C.2.a |
+| 5 | Chính sách bảo mật của Shopee áp dụng cho những đối tượng người dùng nào? | Áp dụng cho cả Người Bán và Người Mua đang sử dụng Dịch vụ, trừ khi có tuyên bố rõ ràng ngược lại. | `shopee-privacy-policy` — mục 1.5 |
+
+**Ghi chú thiết kế bộ câu hỏi:**
+- Đa dạng loại câu hỏi: thời hạn (Q1), điều kiện/ngưỡng số (Q2, Q3, Q4), phạm vi áp dụng (Q5) — không hỏi 5 câu cùng một dạng.
+- Q2 bắt buộc dùng `search_with_filter(metadata_filter={"customer_role": "seller"})` để thỏa yêu cầu K4 (ít nhất 1 câu cần lọc metadata).
+- Cả 5 gold answer đều trích trực tiếp từ nội dung tài liệu đã fetch (không bịa), có thể kiểm chứng lại bằng cách mở đúng file `.md` + mục đã ghi.
 
 ### Tổng hợp chất lượng truy xuất của nhóm
 
