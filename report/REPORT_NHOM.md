@@ -1,8 +1,14 @@
 # Báo Cáo Nhóm — Lab 7: Embedding & Vector Store
 
-**Nhóm:** C3.2
-**Thành viên:** Nguyễn Hoàng Vũ, Trần Minh Anh, Lê Duy Khánh
-**Ngày:** 3/8/2026
+**Nhóm:** C3.2 (K4-DAY7)
+**Thành viên & Phân công công việc:**
+1. **Nguyễn Hoàng Vũ** — Lập trình mã nguồn cốt lõi gói `src` (`chunking.py`, `store.py`, `agent.py`), cấu trúc RAG Agent prompt và bộ lọc siêu dữ liệu (`SentenceChunker` 3 câu).
+2. **Hoàng Thái Dương** (MSV: 2A202601518) — Đánh giá hiệu năng `SentenceChunker` (2 câu), tối ưu hóa tham số cắt ngắt để hạn chế token rác và phân tích chất lượng bộ lọc metadata.
+3. **Lương Đức Thắng** — Thu thập (crawl) 6 tài liệu chính sách Shopee.vn, gán metadata YAML chuẩn K4, lập file `sources.csv`, tích hợp `FPTEmbedder` (`Vietnamese_Embedding` từ FPT AI Marketplace) & `Llama-3.3-70B-Instruct`.
+4. **Lương Trí Tuệ** — Thử nghiệm chiến lược `RecursiveChunker`, bổ sung bộ kiểm thử mở rộng 26 unit tests (`tests/test_tritue_solution.py`), phân tích ảnh hưởng của cấu trúc tài liệu đến đệ quy.
+5. **Phùng Đình Đạt** — Phân tích kỹ thuật regex tách câu nâng cao, kiểm thử biên dịch `python -m compileall`, tối ưu hóa ranh giới ngắt câu và phân tích toán học độ chồng chéo (overlap).
+
+**Ngày:** 03/08/2026
 
 > **Nộp 1 bản / nhóm.** Phần cá nhân (hướng tiếp cận, kết quả riêng, dự đoán…) mỗi thành viên nộp riêng trong `REPORT_CANHAN.md`. Chi tiết thang điểm: `docs/SCORING.md`.
 
@@ -17,14 +23,18 @@
 **Chủ đề (cố định theo lớp K4):** Chính sách thương mại điện tử / hỗ trợ khách hàng (thanh toán, đổi trả, giao hàng, quyền riêng tư, điều kiện người bán…).
 
 **Phạm vi cụ thể nhóm tập trung:**
-> Quy định đăng bán sản phẩm dành cho người bán và chính sách đổi trả hàng hóa dành cho người mua trên nền tảng thương mại điện tử.
+> Bộ quy chế hoạt động, quy định đăng bán sản phẩm của người bán, phương thức thanh toán, chính sách vận chuyển, chính sách trả hàng hoàn tiền và chính sách bảo mật thông tin được thu thập chính thức từ sàn thương mại điện tử Shopee.vn.
 
 ### Danh sách tài liệu (Data Inventory)
 
 | # | Tên tài liệu | Nguồn (Source URL) | Ngày lấy / Phiên bản | Số ký tự | Metadata đã gán |
 |---|--------------|------------|--------------------|----------|-----------------|
-| 1 | Chính sách đổi trả | https://example.com/chinh-sach/doi-tra | 2026-08-02 / 2026.1 | 1069 | `doc_id: k4-returns-policy`, `customer_role: buyer`, `category: returns`, `language: vi` |
-| 2 | Quy định đăng bán | https://example.com/nguoi-ban/dang-ban | 2026-08-02 / 2026.1 | 866 | `doc_id: k4-seller-listing`, `customer_role: seller`, `category: listing`, `language: vi` |
+| 1 | Quy chế hoạt động sàn Shopee.vn | https://help.shopee.vn/portal/4/article/77245 | 2026-08-03 / not-stated | 77,625 | `doc_id: shopee-marketplace-terms`, `customer_role: both`, `category: general-terms`, `language: vi` |
+| 2 | Phương thức thanh toán trên Shopee | https://help.shopee.vn/portal/4/article/79198-... | 2026-08-03 / not-stated | 5,817 | `doc_id: shopee-payment-methods`, `customer_role: buyer`, `category: payment`, `language: vi` |
+| 3 | Chính sách bảo mật Shopee | https://help.shopee.vn/portal/4/article/77244-... | 2026-08-03 / not-stated | 42,934 | `doc_id: shopee-privacy-policy`, `customer_role: both`, `category: privacy`, `language: vi` |
+| 4 | Chính sách trả hàng hoàn tiền Shopee | https://help.shopee.vn/portal/4/article/77251 | 2026-08-03 / not-stated | 19,410 | `doc_id: shopee-returns-refund`, `customer_role: buyer`, `category: returns`, `language: vi` |
+| 5 | Quy định về đăng bán sản phẩm trên Shopee | https://help.shopee.vn/portal/4/article/77246-... | 2026-08-03 / not-stated | 21,315 | `doc_id: shopee-seller-listing-rules`, `customer_role: seller`, `category: seller-terms`, `language: vi` |
+| 6 | Chính sách vận chuyển Shopee | https://help.shopee.vn/portal/4/article/77250-... | 2026-08-03 / not-stated | 24,370 | `doc_id: shopee-shipping-policy`, `customer_role: both`, `category: shipping`, `language: vi` |
 
 **Danh sách kiểm tra quản trị dữ liệu (Data governance checklist):**
 - [x] Tập tài liệu (Corpus) chỉ chứa nguồn công khai/được phép dùng và không chứa dữ liệu cá nhân, thông tin đăng nhập hoặc tài liệu nội bộ.
@@ -34,10 +44,10 @@
 
 | Trường metadata | Kiểu | Ví dụ giá trị | Tại sao hữu ích cho truy xuất (retrieval)? |
 |----------------|------|---------------|-------------------------------|
-| `doc_id` | `str` | `"k4-returns-policy"` | Dùng định danh tài liệu gốc để nhóm hoặc xóa tất cả chunk của một tài liệu. |
-| `customer_role` | `str` | `"buyer"` | Hỗ trợ lọc đối tượng (buyer/seller) nhằm giảm thiểu nhiễu và trả lời đúng trọng tâm. |
-| `category` | `str` | `"returns"` | Phân loại nội dung để thu hẹp phạm vi tìm kiếm ngữ nghĩa theo danh mục. |
-| `language` | `str` | `"vi"` | Định rõ ngôn ngữ của tài liệu để định hướng bộ nhúng và mô hình sinh phù hợp. |
+| `doc_id` | `str` | `"shopee-returns-refund"` | Định danh duy nhất giúp quản lý vòng đời tài liệu và xóa chính xác các chunk liên quan. |
+| `customer_role` | `str` | `"seller"` | Lọc đối tượng áp dụng (buyer/seller/both) để loại bỏ nhiễu từ tài liệu chéo vai trò. |
+| `category` | `str` | `"payment"` | Phân loại danh mục nội dung giúp thu hẹp phạm vi tìm kiếm vector trước khi tính similarity. |
+| `language` | `str` | `"vi"` | Định rõ ngôn ngữ văn bản để lựa chọn mô hình nhúng đa ngữ hoặc mô hình riêng cho tiếng Việt. |
 
 ---
 
@@ -47,39 +57,53 @@
 
 ### Phân tích đường cơ sở (Baseline Analysis)
 
-Chạy `ChunkingStrategyComparator().compare()` trên tài liệu chính sách đổi trả `returns-policy.md` (chunk_size=200):
+Chạy `ChunkingStrategyComparator().compare()` trên tài liệu chính sách trả hàng `shopee-returns-refund.md` (chunk_size=500):
 
 | Tài liệu | Chiến lược (Strategy) | Số lượng Chunk | Độ dài trung bình | Giữ được ngữ cảnh không? |
 |-----------|----------|-------------|------------|-------------------|
-| `returns-policy.md` | FixedSizeChunker (`fixed_size`) | 5 | 192.40 | Không tốt (cắt ngang từ ở biên chunk như `retrieved_` và `h/doi-tra`) |
-| `returns-policy.md` | SentenceChunker (`by_sentences`) | 3 | 292.33 | Rất tốt (giữ trọn vẹn ngữ nghĩa của từng câu) |
-| `returns-policy.md` | RecursiveChunker (`recursive`) | 6 | 145.50 | Tốt (phân rã tự nhiên theo dấu ngắt dòng và đoạn văn) |
+| `shopee-returns-refund.md` | FixedSizeChunker (`fixed_size`) | 44 | 495.91 | Cắt theo độ dài cố định, bị ngắt từ ở biên chunk nhưng kích thước rất đồng đều. |
+| `shopee-returns-refund.md` | SentenceChunker (`by_sentences`) | 21 | 932.19 | Giữ trọn vẹn ngữ nghĩa từng câu, không đứt đoạn câu nhưng kích thước chunk khá lớn. |
+| `shopee-returns-refund.md` | RecursiveChunker (`recursive`) | 54 | 362.26 | Tốt nhất về mặt cấu trúc (phân tách theo mục lục, đoạn văn rồi mới đến câu). |
 
 ### Chiến lược của từng thành viên
 
 **Thành viên 1 — Nguyễn Hoàng Vũ**
-- **Loại chiến lược:** SentenceChunker
-- **Mô tả & lý do chọn cho chủ đề này:** Chọn cách chia nhỏ theo câu (`max_sentences_per_chunk=3`) để đảm bảo RAG agent nhận được thông tin ngữ cảnh đầy đủ, câu văn nguyên vẹn và không bị đứt đoạn ngữ nghĩa ở biên.
-- **Code snippet (nếu custom):** Sử dụng `SentenceChunker` mặc định trong package `src`.
+- **Công việc phụ trách:** Lập trình gói mã nguồn cốt lõi `src` (`chunking.py`, `store.py`, `agent.py`), thiết kế prompt RAG Agent và cơ chế lọc `search_with_filter`.
+- **Loại chiến lược:** SentenceChunker (`max_sentences_per_chunk=3`)
+- **Mô tả & lý do chọn cho chủ đề này:** Phân chia văn bản theo ranh giới câu giúp câu văn luôn trọn vẹn ngữ nghĩa, tránh tình trạng câu bị cắt đôi ở điểm ranh giới chunk làm giảm khả năng hiểu của LLM.
 
-**Thành viên 2 — Trần Minh Anh**
-- **Loại chiến lược:** RecursiveChunker
-- **Mô tả & lý do chọn:** Sử dụng đệ quy phân tách theo cấp độ từ lớn đến nhỏ (`\n\n`, `\n`, `. `, ` `, `""`) giúp giữ nguyên khối tiêu đề và các đoạn văn độc lập trước khi ép theo kích thước tối đa. Điều này rất phù hợp với tài liệu điều khoản Shopee có nhiều đầu mục phân tầng rõ ràng.
+**Thành viên 2 — Hoàng Thái Dương (MSV: 2A202601518)**
+- **Công việc phụ trách:** Phân tích hiệu năng `SentenceChunker`, tối ưu hóa tham số gom nhóm câu và đánh giá bộ lọc metadata pre-filtering.
+- **Loại chiến lược:** SentenceChunker (`max_sentences_per_chunk=2`)
+- **Mô tả & lý do chọn:** Giới hạn 2 câu mỗi chunk giúp thông tin trích xuất ngắn gọn và tập trung đúng trọng tâm câu hỏi, giảm số lượng token không cần thiết nạp vào prompt của LLM.
 
-**Thành viên 3 — Lê Duy Khánh**
-- **Loại chiến lược:** FixedSizeChunker
-- **Mô tả & lý do chọn:** Sử dụng FixedSize với kích thước chunk 300 và overlap 30 làm baseline so sánh, ưu điểm là cực kỳ đơn giản và tốc độ nhanh.
+**Thành viên 3 — Lương Đức Thắng**
+- **Công việc phụ trách:** Crawl toàn bộ 6 tài liệu Shopee.vn, gán YAML Front Matter, lập `sources.csv`, tích hợp mô hình nhúng tiếng Việt thật (`FPTEmbedder` - model `Vietnamese_Embedding` từ FPT AI Marketplace) và LLM `Llama-3.3-70B-Instruct`.
+- **Loại chiến lược:** FixedSizeChunker (`chunk_size=500, overlap=50`)
+- **Mô tả & lý do chọn:** Thử nghiệm FixedSize làm baseline chuẩn đồng thời chứng minh rằng chất lượng mô hình nhúng thật quyết định phần lớn độ chính xác truy xuất (đưa score từ mức ngẫu nhiên 0.01 lên 0.5 - 0.9).
+
+**Thành viên 4 — Lương Trí Tuệ**
+- **Công việc phụ trách:** Thiết kế chiến lược `RecursiveChunker`, bổ sung bộ test suite 26 unit tests (`tests/test_tritue_solution.py`), phân tích ảnh hưởng của cấu trúc tài liệu đến chia đệ quy.
+- **Loại chiến lược:** RecursiveChunker (`chunk_size=500`)
+- **Mô tả & lý do chọn:** Phân tách đệ quy dựa trên thứ tự ưu tiên `["\n\n", "\n", ". ", " ", ""]` giúp bảo tồn tự nhiên các khối tiêu đề và điều khoản phân tầng trong quy chế Shopee.
+
+**Thành viên 5 — Phùng Đình Đạt**
+- **Công việc phụ trách:** Phân tích kỹ thuật regex tách câu nâng cao `(?<=[.!?])(?: |\n)+`, kiểm thử biên dịch mã nguồn (`python -m compileall`), tối ưu hóa ranh giới ngắt câu và phân tích toán học độ chồng chéo (overlap).
+- **Loại chiến lược:** SentenceChunker (`max_sentences_per_chunk=3` dùng regex nâng cao)
+- **Mô tả & lý do chọn:** Cắt văn bản theo câu dựa trên regex tối ưu giúp tách chính xác các dấu ngắt câu tiếng Việt trong điều khoản Shopee mà không làm mất khoảng trắng biên hay dấu xuống dòng.
 
 ### So Sánh Giữa Các Thành Viên
 
-| Thành viên | Chiến lược (Strategy) | Điểm truy xuất (/10) | Điểm mạnh | Điểm yếu |
+| Thành viên | Phụ trách / Chiến lược | Điểm truy xuất (/10) | Điểm mạnh | Điểm yếu |
 |-----------|----------|----------------------|-----------|----------|
-| Nguyễn Hoàng Vũ | SentenceChunker | 9/10 | Ngữ cảnh câu luôn vẹn tròn, mạch lạc | Số lượng chunk lớn nếu tài liệu dài |
-| Trần Minh Anh | RecursiveChunker | 9/10 | Giữ cấu trúc tài liệu rất tốt, linh hoạt | Có thể tạo ra các chunk quá nhỏ ở biên |
-| Lê Duy Khánh | FixedSizeChunker | 6/10 | Dễ triển khai, phân bố đồng đều | Bị mất ngữ cảnh do cắt biên tùy tiện |
+| Nguyễn Hoàng Vũ | Lập trình `src` / `SentenceChunker` (3 câu) | 8/10 | Câu văn trọn vẹn, không bị đứt đoạn | Kích thước chunk có thể hơi lớn |
+| Hoàng Thái Dương | Đánh giá & Tối ưu / `SentenceChunker` (2 câu) | 8/10 | Ngắn gọn, tập trung đúng trọng tâm | Có thể chia tách 2 câu liên quan mật thiết |
+| Lương Đức Thắng | Crawl dữ liệu & API Embedder / `FixedSizeChunker` + FPTEmbedder | 9/10 | Điểm tương đồng rất cao (0.5 - 0.9) nhờ Embedder thật | Bị ngắt từ ở ranh giới biên chunk |
+| Lương Trí Tuệ | Extended Testing / `RecursiveChunker` | 9/10 | Giữ cấu trúc tiêu đề/đoạn văn phân tầng | Chunk ở biên cuối có thể quá nhỏ |
+| Phùng Đình Đạt | Regex Testing / `SentenceChunker` (Regex) | 8/10 | Tách chính xác dấu câu tiếng Việt | Phụ thuộc vào quy tắc biểu thức chính quy |
 
 **Chiến lược nào tốt nhất cho chủ đề này? Tại sao?**
-> Chiến lược `RecursiveChunker` kết hợp với `SentenceChunker` mang lại kết quả tốt nhất. Tài liệu TMĐT thường có cấu trúc rõ ràng (tiêu đề mục, danh sách gạch đầu dòng), việc tách đệ quy giúp giữ được sự phân cấp thông tin và hạn chế tối đa việc ngắt nửa câu hay nửa từ, tạo điều kiện tốt nhất cho LLM tổng hợp câu trả lời.
+> Chiến lược `RecursiveChunker` kết hợp với `SentenceChunker` cho kết quả tốt nhất. Các điều khoản Shopee có kết cấu tiêu đề phân tầng rõ rệt, việc phân tách đệ quy giúp bảo toàn sự liên kết giữa các mục lớn và mục nhỏ, trong khi việc cắt theo ranh giới câu đảm bảo thông tin không bị gãy đoạn ngữ nghĩa ở biên.
 
 ---
 
@@ -89,39 +113,39 @@ Chạy `ChunkingStrategyComparator().compare()` trên tài liệu chính sách �
 
 | # | Câu hỏi (Query) | Câu trả lời chuẩn (Gold Answer) | Chunk nào chứa thông tin? |
 |---|-------|-------------------------------|--------------------------|
-| 1 | Thời hạn người mua gửi yêu cầu đổi trả hàng là bao lâu? | Thời hạn được nêu trên trang sản phẩm hoặc theo chính sách của sàn. | `k4-returns-policy::chunk_1` |
-| 2 | Người bán cần làm gì khi có yêu cầu đổi trả từ người mua? | Người bán có trách nhiệm phản hồi yêu cầu đổi trả theo quy trình của sàn. | `k4-returns-policy::chunk_1` |
-| 3 | Người bán có được đăng bán sản phẩm bị cấm hay không? | Sản phẩm bị hạn chế hoặc bị cấm không được phép đăng bán trên sàn. | `k4-seller-listing::chunk_0` |
-| 4 | Trách nhiệm của người bán khi cung cấp thông tin sản phẩm là gì? | Người bán chịu trách nhiệm cung cấp thông tin sản phẩm chính xác, bao gồm giá, mô tả và tình trạng hàng. | `k4-seller-listing::chunk_0` |
-| 5 | Yêu cầu đổi trả hàng cần đi kèm tài liệu gì để được chấp nhận? | Yêu cầu đổi trả phải đi kèm bằng chứng phù hợp khi hàng bị lỗi hoặc không đúng mô tả. | `k4-returns-policy::chunk_0` |
+| 1 | Thời hạn người mua gửi yêu cầu trả hàng/hoàn tiền là bao lâu? | Trong vòng 15 ngày kể từ khi đơn hàng được cập nhật giao hàng thành công; riêng thực phẩm tươi sống/đông lạnh là 24 giờ. | `shopee-returns-refund` |
+| 2 | Diện tích ảnh sản phẩm thật tối thiểu phải chiếm bao nhiêu %? | Tối thiểu 40% diện tích toàn ảnh. | `shopee-seller-listing-rules` (Lọc: seller) |
+| 3 | Khoảng giá trị giao dịch tối thiểu và tối đa được Apple Pay hỗ trợ là bao nhiêu? | Tối thiểu từ 10.000 VNĐ và tối đa đến 25.000.000 VNĐ. | `shopee-payment-methods` (Lọc: buyer) |
+| 4 | Kênh vận chuyển Hỏa Tốc của Shopee quy định giới hạn kích thước và cân nặng thế nào? | Cân nặng tối đa 30kg, kích thước tối đa 60x60x60cm. | `shopee-shipping-policy` |
+| 5 | Chính sách bảo mật của Shopee thu thập những thông tin cá nhân nào của người dùng? | Họ tên, địa chỉ email, số điện thoại, ngày sinh, địa chỉ giao hàng và thông tin thanh toán (bao gồm cả Người Bán và Người Mua). | `shopee-privacy-policy` |
 
 ### Tổng hợp chất lượng truy xuất của nhóm
 
 | # | Câu hỏi | Chiến lược tốt nhất cho câu này | Có chunk liên quan trong top-3? | Ghi chú |
 |---|---------|-------------------------------|-------------------------------|---------|
-| 1 | Thời hạn người mua gửi yêu cầu đổi trả là bao lâu? | RecursiveChunker | Có (score: 0.0841) | Tìm đúng chunk trong returns-policy |
-| 2 | Người bán cần làm gì khi nhận yêu cầu đổi trả? | SentenceChunker | Có (score: 0.0739) | Lọc hiệu quả theo customer_role: buyer |
-| 3 | Người bán có được đăng sản phẩm cấm không? | RecursiveChunker | Có (score: 0.3181) | Kết quả score cao nhất nhờ khớp từ khóa cấm |
-| 4 | Trách nhiệm người bán khi đăng thông tin? | SentenceChunker | Có (score: 0.0593) | Nhận diện chính xác thông tin đăng bán |
-| 5 | Đổi trả hàng cần gửi kèm tài liệu gì? | RecursiveChunker | Có (score: 0.3008) | Khớp chính xác từ khóa bằng chứng/lỗi |
+| 1 | Bao nhiêu ngày để yêu cầu trả hàng/hoàn tiền? | SentenceChunker / Recursive | Có (score: 0.6164) | Khớp chính xác thời hạn 15 ngày |
+| 2 | % diện tích ảnh sản phẩm tối thiểu? *(filter seller)* | RecursiveChunker | Có (score: 0.5016) | Bộ lọc seller hoạt động hoàn hảo |
+| 3 | Khoảng giá trị dùng được Apple Pay? *(filter buyer)* | SentenceChunker | Có (score: 0.6023) | Chunk trích xuất đúng nhưng LLM nhầm với Google Pay (120tr) |
+| 4 | Giới hạn kích thước/cân nặng kênh Hỏa Tốc? | SentenceChunker | Có (score: 0.4449) | Tìm thấy đúng bảng giới hạn Hỏa Tốc |
+| 5 | Chính sách bảo mật áp dụng đối tượng nào? | RecursiveChunker | Có (score: 0.5662) | Truy xuất đúng đoạn bảo mật thông tin |
 
 **Lọc bằng metadata có giúp ích không? Ở câu hỏi nào?**
-> Lọc bằng metadata cực kỳ hiệu quả, cụ thể ở các câu hỏi 2, 3 và 4. Việc giới hạn lọc theo `customer_role` (buyer hoặc seller) giúp loại bỏ nhiễu từ các tài liệu chéo (ví dụ tránh lấy nhầm quy trình đổi trả của buyer áp cho seller), từ đó giảm thiểu tối đa thông tin sai lệch nạp vào LLM.
+> Có giúp ích rất nhiều, đặc biệt ở câu số 2 và 3. Việc lọc theo `customer_role` (`seller` hoặc `buyer`) loại bỏ hoàn toàn các tài liệu không liên quan (tránh lấy nhầm quy định người mua áp cho người bán), từ đó tăng độ chính xác tìm kiếm.
 
 ---
 
 ## 4. Thuyết trình (Demo) & Bài học nhóm — Nhóm (5 điểm)
 
 **Những phân tích (insights) hay nhất nhóm sẽ trình bày:**
-1. Sự khác biệt về chất lượng cắt văn bản ngữ nghĩa của Sentence/Recursive so với FixedSize.
-2. Vai trò sống còn của pre-filtering bằng metadata trong hệ thống RAG quy mô lớn để tối ưu hóa không gian vector.
-3. Sự hạn chế của MockEmbedder (băm MD5) so với embeddings ngữ nghĩa thực tế.
+1. Tác động rõ rệt của chất lượng Embedding: sử dụng mô hình thật (như `Vietnamese_Embedding` của FPT AI Marketplace) đưa điểm cosine từ ngẫu nhiên lên mức 0.5 - 0.9, phản ánh chính xác ngữ nghĩa tiếng Việt.
+2. Tác dụng của metadata pre-filtering trong việc thu hẹp không gian tìm kiếm vector và giải quyết triệt để lỗi nhiễu thông tin chéo đối tượng.
+3. Phân tích lỗi RAG: Retrieval đúng không đồng nghĩa với việc Agent sẽ trả lời đúng (LLM vẫn có thể bị ảo giác/nhầm lẫn số liệu kế cận như ca Apple Pay vs Google Pay).
 
 **Bài học rút ra khi so sánh trong nhóm:**
-> Cùng một tài liệu thô, việc chọn chiến lược chia nhỏ phù hợp quyết định mức độ mạch lạc thông tin nạp cho tác tử LLM. Cắt theo câu giúp giữ ngữ cảnh, trong khi cắt đệ quy giúp tối ưu hóa định dạng phân tầng.
+> Lựa chọn chiến lược chunking phụ thuộc rất lớn vào định dạng tài liệu nguồn. Tài liệu cấu trúc phân tầng (như quy chế) cần Recursive, tài liệu phẳng/liền mạch nên dùng Sentence. Ngoài ra, tinh chỉnh tham số `chunk_size` và `overlap` đóng vai trò then chốt trong tối ưu hóa ngữ cảnh biên.
 
 **Nếu làm lại, nhóm sẽ thay đổi gì trong chiến lược dữ liệu (data strategy)?**
-> Nhóm sẽ thiết kế dữ liệu Markdown chuẩn hóa hơn ngay từ khâu thu thập (đầy đủ tiêu đề H2/H3 rõ ràng) để RecursiveChunker hoạt động tối đa công suất dựa trên cấu trúc thẻ tiêu đề đó.
+> Nhóm sẽ chuẩn bị dữ liệu có cấu trúc thẻ Markdown phân cấp H1/H2/H3 chặt chẽ hơn và viết thêm Custom Chunker định hướng tiêu đề (Heading-based Chunker) để tăng độ hội tụ thông tin trong từng chunk.
 
 ---
 
